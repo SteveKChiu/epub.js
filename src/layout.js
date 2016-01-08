@@ -1,6 +1,6 @@
 EPUBJS.Layout = EPUBJS.Layout || {};
 
-EPUBJS.Layout.Reflowable = function(){
+EPUBJS.Layout.Reflowable = function() {
 	this.documentElement = null;
     this.pageStride = 0;
     this.isVertical = false;
