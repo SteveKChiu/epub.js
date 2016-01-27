@@ -643,16 +643,15 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
         }
 
         var intersects = false;
-        var pos = 0;
         var pos_min = 0;
         var pos_max = nodes.length;
+        var pos = Math.floor((pos_min + pos_max) / 2);
 
         while (pos_min < pos_max) {
-            pos = Math.floor((pos_min + pos_max) / 2);
             var r = testNodeBoundry(nodes[pos]);
             if (r === 0) {
                 // node intersects page boundry
-                intersects = true;
+                intersects = nodes[pos].text.nodeType == Node.TEXT_NODE;
                 break;
             } else if (r < 0) {
                 // node is inside this page
@@ -661,6 +660,7 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
                 // node is outside this page
                 pos_max = pos;
             }
+            pos = Math.floor((pos_min + pos_max) / 2);
         }
 
         var node = nodes[pos];
@@ -677,9 +677,9 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
         var textNode = node.text;
         var text = textNode.textContent;
         var intersects = true;
-        var pos = 0;
         var pos_min = 0;
         var pos_max = text.length;
+        var pos = pos = Math.floor((pos_min + pos_max) / 2);
 
         var range = document.createRange();
         range.setStart(textNode, pos_min);
@@ -687,7 +687,6 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
 
         while (intersects) {
             while (pos_min < pos_max) {
-                pos = Math.floor((pos_min + pos_max) / 2);
                 range.setStart(textNode, pos);
                 var rect = range.getBoundingClientRect();
                 var r = testBoundry(rect);
@@ -698,6 +697,7 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
                     // position is outside this page
                     pos_max = pos;
                 }
+                pos = Math.floor((pos_min + pos_max) / 2);
             }
 
             addPage(textNode, pos);
@@ -727,7 +727,7 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
         if (isVertical) {
             if (rect.bottom <= limit) {
                 return -1;
-            } else if (rect.top > limit) {
+            } else if (rect.top >= limit) {
                 return 1;
             } else {
                 return 0;
@@ -735,7 +735,7 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
         } else if (isRightToLeft) {
             if (maxRight - rect.left <= limit) {
                 return -1;
-            } else if (maxRight - rect.right > limit) {
+            } else if (maxRight - rect.right >= limit) {
                 return 1;
             } else {
                 return 0;
@@ -743,7 +743,7 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
         } else {
             if (rect.right <= limit) {
                 return -1;
-            } else if (rect.left > limit) {
+            } else if (rect.left >= limit) {
                 return 1;
             } else {
                 return 0;
@@ -770,8 +770,15 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
 
     var isSingle = layoutPages.displayedPages <= 1;
     var lastNode = null;
+    var treeWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT + NodeFilter.SHOW_TEXT, null, false);
+	var node;
+	while ((node = treeWalker.nextNode())) {
+        if (node.nodeType == Node.ELEMENT_NODE) {
+            if (node.nodeName != "IMG" && node.nodeName != "SVG") continue;
+        } else {
+            if (/^\s*$/.test(node.data)) continue;
+        }
 
-    renderer.textSprint(root, function(node) {
         lastNode = node;
         if (pages.length === 0) {
             addPage(node, 0);
@@ -783,7 +790,7 @@ EPUBJS.Renderer.prototype.mapPage = function(layoutPages) {
                 checkTextNodes();
             }
         }
-    });
+    }
 
     while (nodes.length > 0) {
         checkTextNodes();
