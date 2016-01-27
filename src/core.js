@@ -11,10 +11,11 @@ EPUBJS.core.getEls = function(classes) {
 	return document.getElementsByClassName(classes);
 };
 
-EPUBJS.core.request = function(url, type, withCredentials) {
+EPUBJS.core.request = function(url, type, withCredentials, deferred, tried) {
 	var supportsURL = window.URL;
 	var BLOB_RESPONSE = supportsURL ? "blob" : "arraybuffer";
-	var deferred = new RSVP.defer();
+	deferred = deferred || new RSVP.defer();
+    tried = tried || 0;
 	var xhr = new XMLHttpRequest();
 	var uri;
 
@@ -26,6 +27,13 @@ EPUBJS.core.request = function(url, type, withCredentials) {
 		var r;
 
 		if (this.readyState != this.DONE) return;
+
+        if (this.status === 200 && !this.response && tried < 3) {
+            window.setTimeout(function() {
+                EPUBJS.core.request(url, type, withCredentials, deferred, tried + 1);
+            }, 1);
+            return;
+        }
 
 		if ((this.status === 200 || this.status === 0) && this.response) { // Android & Firefox reporting 0 for local & blob urls
 			if (type == 'xml'){
@@ -63,7 +71,7 @@ EPUBJS.core.request = function(url, type, withCredentials) {
 			deferred.resolve(r);
 		} else {
 			deferred.reject({
-				message : this.response,
+				message : type + " : " + url + " -> " + this.response,
 				stack : new Error().stack
 			});
 		}
